@@ -136,6 +136,8 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             
             if self.num_rota > 1:
                 rotated_outputs = tensorflow.stack(rotated_outputs)
+            else:
+                rotated_outputs = rotated_outputs[0]
             
             return rotated_outputs
 
