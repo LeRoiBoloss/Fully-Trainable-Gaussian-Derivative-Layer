@@ -132,7 +132,10 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             
             
             if self.use_bias:
-                rotated_outputs = tensorflow.stack([nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs])
+                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+            
+            if self.num_rota > 1:
+                rotated_outputs = tensorflow.stack(rotated_outputs)
             
             return rotated_outputs
 
