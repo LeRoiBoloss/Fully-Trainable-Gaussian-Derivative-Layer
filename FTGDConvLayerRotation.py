@@ -139,7 +139,7 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             else:
                 rotated_outputs = rotated_outputs[0]
             
-            return rotated_outputs
+            return rotated_outputs[0]
 
     def deploy(self):
 
