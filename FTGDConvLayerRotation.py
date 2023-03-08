@@ -432,7 +432,7 @@ def computeOutput(rotated_filters, inputs, num_basis, separated, padding_mode, s
             outputs = []
             for i in range(num_basis):
 
-                res1 = K.conv2d(inputs, filters[0][i,:,:,:,:], strides = stride, padding = padding_mode)
+                res1 = K.conv2d(inputs, filters[i,:,:,:,:], strides = stride, padding = padding_mode)
                 res2 = K.conv2d(res1, rotated_filters[1][i,:,:,:,:], padding = padding_mode)
 
                 outputs.append(res2)
