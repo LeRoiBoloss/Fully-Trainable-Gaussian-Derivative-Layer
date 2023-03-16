@@ -116,9 +116,11 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             if self.use_bias:
                 rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
                 
-            outputs = tensorflow.concat(rotated_outputs, axis = -1)
+            output_pooled = rotated_outputs[0]
+            for i in range(1, self.num_rota):
+                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])   
             
-            return rotated_outputs
+            return output_pooled
 
         else:
             GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
