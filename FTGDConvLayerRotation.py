@@ -107,39 +107,33 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
         if self.deployed:
 
             if self.separated:
-                rotated_outputs = computeOutput([self.GaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride)
+                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
 
             else:
 
-                rotated_outputs = computeOutput(self.GaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride)
+                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
 
             if self.use_bias:
-                rotated_outputs = tensorflow.stack([nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs])
+                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+                
+            outputs = tensorflow.concat(rotated_outputs, axis = -1)
+            
             return rotated_outputs
 
         else:
-            if self.num_rota <= 1:
-                GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated)]
-            else:
-                GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
+            GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
  
-
             if self.separated:
-                rotated_outputs = computeOutput([GaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride)
-            
+                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
             else :
-                rotated_outputs = computeOutput(GaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride)
-            
+                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
             
             if self.use_bias:
                 rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
             
-            if self.num_rota > 1:
-                rotated_outputs = tensorflow.stack(rotated_outputs)
-            else:
-                rotated_outputs = rotated_outputs[0]
+            outputs = tensorflow.concat(rotated_outputs, axis = -1)
             
-            return rotated_outputs[0]
+            return outputs
 
     def deploy(self):
 
@@ -147,10 +141,7 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
         Function to use when the training is done. It allows to avoid to compute again
         the Gaussian Derivative kernels of all bases after the training.
         """
-        if self.num_rota <= 1:
-            self.GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated)]
-        else:
-            self.GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
+        self.GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
  
         self.deployed = True
 
@@ -411,7 +402,7 @@ def getGaussianFilters(bases, weights, num_basis, input_channels, output_channel
         return Filters
 
 @tensorflow.function
-def computeOutput(rotated_filters, inputs, num_basis, separated, padding_mode, stride = (1,1)):
+def computeOutput(filters, inputs, num_basis, separated, padding_mode, stride = (1,1)):
 
     """
     Description : Applies the Gaussian filters given by getGaussianFilters to the input
@@ -430,28 +421,22 @@ def computeOutput(rotated_filters, inputs, num_basis, separated, padding_mode, s
 
     Usage : Used in the call function of the FTGDConvLayerRotation class.
     """
-    rotated_outputs = []
     if separated:
-        
-        for filters in rotated_filters[0]:
-            outputs = []
-            for i in range(num_basis):
+    
+        outputs = []
+        for i in range(num_basis):
 
-                res1 = K.conv2d(inputs, filters[i,:,:,:,:], strides = stride, padding = padding_mode)
-                res2 = K.conv2d(res1, rotated_filters[1][i,:,:,:,:], padding = padding_mode)
+            res1 = K.conv2d(inputs, filters[0][i,:,:,:,:], strides = stride, padding = padding_mode)
+            res2 = K.conv2d(res1, filters[1][i,:,:,:,:], padding = padding_mode)
 
-                outputs.append(res2)
+            outputs.append(res2)
 
-            outputs = tensorflow.concat(outputs, axis = -1)
-            rotated_outputs.append(outputs)
+        outputs = tensorflow.concat(outputs, axis = -1)
 
-        return rotated_outputs
+        return outputs
 
     else:
 
-        for filters in rotated_filters:
-            outputs = K.conv2d(inputs, filters, strides=stride, padding = padding_mode)
-            
-            rotated_outputs.append(outputs)
+        outputs = K.conv2d(inputs, filters, strides=stride, padding = padding_mode)
 
-        return rotated_outputs
+        return outputs
