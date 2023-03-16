@@ -131,17 +131,11 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             if self.use_bias:
                 rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
 
-            outputs = []
-            for k in range(self.num_filters):
-                output_pooled = rotated_outputs[k]
-                for i in range(self.num_rota):
-                    output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[k + i*self.num_filters])
-                outputs.append(output_pooled)
-                
+            output_pooled = rotated_outputs[0]
+            for i in range(1, self.num_rota):
+                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])                
             
-            outputs = tensorflow.concat(outputs, axis = -1)
-            
-            return outputs
+            return output_pooled
 
     def deploy(self):
 
