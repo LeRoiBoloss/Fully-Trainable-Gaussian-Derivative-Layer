@@ -90,54 +90,55 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
 
     def build(self, input_shape):
         
-        self.sigmas, self.centroids, self.thetas = initGaussianParameters(self.num_basis, self.order, self.random_init, self.trainability, self.sigma_init, self.mu_init, self.theta_init)
+        # self.sigmas, self.centroids, self.thetas = initGaussianParameters(self.num_basis, self.order, self.random_init, self.trainability, self.sigma_init, self.mu_init, self.theta_init)
 
-        if self.use_bias:
-            self.bias = tensorflow.Variable(initial_value = tensorflow.zeros(shape = (self.num_filters,), dtype = 'float'),  name = 'bias', trainable = True)
-        else:
-            self.bias = None
+        # if self.use_bias:
+        #     self.bias = tensorflow.Variable(initial_value = tensorflow.zeros(shape = (self.num_filters,), dtype = 'float'),  name = 'bias', trainable = True)
+        # else:
+        #     self.bias = None
             
-        self.clWeights = initWeights(input_shape[-1], self.num_filters, self.num_basis, self.order, self.separated)
-        self.inputChannels = input_shape[-1]
+        # self.clWeights = initWeights(input_shape[-1], self.num_filters, self.num_basis, self.order, self.separated)
+        # self.inputChannels = input_shape[-1]
         self.inputShape = input_shape
-        self.deployed = False
+        # self.deployed = False
 
     def call(self, inputs):
 
-        if self.deployed:
+        # if self.deployed:
 
-            if self.separated:
-                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
+        #     if self.separated:
+        #         rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
 
-            else:
+        #     else:
 
-                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
+        #         rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
 
-            if self.use_bias:
-                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+        #     if self.use_bias:
+        #         rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
                 
-            output_pooled = rotated_outputs[0]
-            for i in range(1, self.num_rota):
-                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])   
+        #     output_pooled = rotated_outputs[0]
+        #     for i in range(1, self.num_rota):
+        #         output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])   
             
-            return rotated_outputs
+        #     return rotated_outputs
 
-        else:
-            GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
+        # else:
+        #     GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
  
-            if self.separated:
-                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
-            else :
-                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
+        #     if self.separated:
+        #         rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
+        #     else :
+        #         rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
             
-            if self.use_bias:
-                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+        #     if self.use_bias:
+        #         rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
 
-            output_pooled = rotated_outputs[0]
-            for i in range(1, self.num_rota):
-                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])                
+        #     output_pooled = rotated_outputs[0]
+        #     for i in range(1, self.num_rota):
+        #         output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])                
             
-            return rotated_outputs
+        #     return rotated_outputs
+        return tensorflow.convert_to_tensor(2*math.pi)
 
     def deploy(self):
 
