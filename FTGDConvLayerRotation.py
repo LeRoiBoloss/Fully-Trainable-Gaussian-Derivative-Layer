@@ -18,7 +18,6 @@ from tensorflow.python.ops import nn
 import numpy as np
 import math
 
-
 class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
     """
     Linear combinations of anisotropic, shifted and oriented Gaussian Derivative kernels.
@@ -74,6 +73,164 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
     def __init__(self, filters, kernel_size,  num_basis, order, num_rota=1, separated = False, trainability = [True, True, True], padding = 'same', sigma_init = 1, mu_init = 0, theta_init = 0, strides = (1,1), random_init = True, use_bias = False, **kwargs):
 
         super(FTGDConvLayerRotation, self).__init__()
+        self.num_rota = num_rota
+        self.num_filters = filters
+        self.filter_size = kernel_size
+        self.num_basis = num_basis
+        self.order = order
+        self.separated = separated
+        self.trainability = trainability
+        self.padding_mode = padding
+        self.stride = strides
+        self.random_init = random_init
+        self.sigma_init = sigma_init
+        self.mu_init =mu_init
+        self.theta_init = theta_init
+        self.use_bias = use_bias
+
+    def build(self, input_shape):
+        
+        self.sigmas, self.centroids, self.thetas = initGaussianParameters(self.num_basis, self.order, self.random_init, self.trainability, self.sigma_init, self.mu_init, self.theta_init)
+
+        if self.use_bias:
+            self.bias = tensorflow.Variable(initial_value = tensorflow.zeros(shape = (self.num_filters,), dtype = 'float'),  name = 'bias', trainable = True)
+        else:
+            self.bias = None
+            
+        self.clWeights = initWeights(input_shape[-1], self.num_filters, self.num_basis, self.order, self.separated)
+        self.inputChannels = input_shape[-1]
+        self.inputShape = input_shape
+        self.deployed = False
+
+    def call(self, inputs):
+
+        if self.deployed:
+
+            if self.separated:
+                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
+
+            else:
+
+                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in self.GaussFilters]
+
+            if self.use_bias:
+                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+                
+            output_pooled = rotated_outputs[0]
+            for i in range(1, self.num_rota):
+                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])   
+            
+            return rotated_outputs
+
+        else:
+            GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
+ 
+            if self.separated:
+                rotated_outputs = [computeOutput([RotatedGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
+            else :
+                rotated_outputs = [computeOutput(RotatedGaussFilters, inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for RotatedGaussFilters in GaussFilters]
+            
+            if self.use_bias:
+                rotated_outputs = [nn.bias_add(outputs, self.bias, data_format='NHWC') for outputs in rotated_outputs]
+
+            output_pooled = rotated_outputs[0]
+            for i in range(1, self.num_rota):
+                output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])                
+            
+            return rotated_outputs
+
+    def deploy(self):
+
+        """
+        Function to use when the training is done. It allows to avoid to compute again
+        the Gaussian Derivative kernels of all bases after the training.
+        """
+        self.GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
+ 
+        self.deployed = True
+
+    def to_train(self):
+
+        """
+        Fonction to use to re-train a model after deploying it.
+        """
+        self.deployed = False
+
+    def get_config(self):
+        config = super(FTGDConvLayerRotation, self).get_config()
+        config.update({
+            "num_rota":self.num_rota,
+            "filters":self.num_filters,
+            "kernel_size":self.filter_size,
+            'num_basis':self.num_basis,
+            'order':self.order,
+            'separated':self.separated,
+            'trainability':self.trainability,
+            'strides':self.stride,
+            'random_init':self.random_init,
+            'padding':self.padding_mode,
+            'sigma_init':self.sigma_init,
+            'mu_init':self.mu_init,
+            'theta_init':self.theta_init,
+            'use_bias':self.use_bias
+        })
+        return config
+
+class FTGDConvLayerRotationLifting(tensorflow.keras.layers.Layer):
+    """
+    Linear combinations of anisotropic, shifted and oriented Gaussian Derivative kernels.
+
+    Params : filters      - int             - the number of filters.
+             kernel_size  - tuple of int    - kernel size used.
+             num_basis    - int             - number of bases used in the layer.
+             order        - int             - maximal order of derivation of the 
+                                              Gaussian Derivative kernels.
+             num_rota     - int             - number of rotation 
+                                              example : num_rota = 4 => 0°, 90°, 180°, 270°
+             separated    - boolean         - indicates if the linear combination 
+                                              should be separated or not.
+             trainability - list of boolean - indicates if the Gaussian parameters
+                                              should be trainable or not.
+                                              example : trainability = [True, False, True]
+                                                -> scales will be trainable
+                                                -> shifts won't be trainable
+                                                -> orientations will be trainable
+             padding      - string          - type of padding
+             sigma_init   - float           - initialization value of the scales 
+                                              (if random_init = False)
+             mu_init      - float           - initialization value of the shifts
+                                              (if random_init = False)
+             theta_init   - float           - initialization value of the orientation
+                                              (if random_init = False)
+                                              example : if sigma_init = 1.5, 
+                                                        trainability[0] = False and 
+                                                        random_init = False then
+                                                        the Gaussian Derivative kernels 
+                                                        will all have constant scales 
+                                                        of value 1.5.
+             strides      - tuple of int    - value of the stride
+             random_init  - boolean         - whether or not the initialization should 
+                                              be random. If false, sigma_init, mu_init and 
+                                              theta_init are used.
+             use_bias     - boolean         - whether a bias should be used or not.
+                                                
+
+                                        
+    :Example:
+    >>>from keras.models import Sequential, Model
+    >>>from keras.layers import Input
+    >>>xIn=Input(shape=(28,28,3))
+    >>>x=FTGDConvLayerRotation(filters=16, 
+                       kernel_size = (7,7), 
+                       num_basis= 4, order=3, 
+                       separated = True, 
+                       name = 'Gaussian1')(xIn)
+    >>>model = Model(xIn,x)
+    """
+    
+    def __init__(self, filters, kernel_size,  num_basis, order, num_rota=1, separated = False, trainability = [True, True, True], padding = 'same', sigma_init = 1, mu_init = 0, theta_init = 0, strides = (1,1), random_init = True, use_bias = False, **kwargs):
+
+        super(FTGDConvLayerRotationLifting, self).__init__()
         self.num_rota = num_rota
         self.num_filters = filters
         self.filter_size = kernel_size
@@ -157,7 +314,7 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
         self.deployed = False
 
     def get_config(self):
-        config = super(FTGDConvLayerRotation, self).get_config()
+        config = super(FTGDConvLayerRotationLifting, self).get_config()
         config.update({
             "num_rota":self.num_rota,
             "filters":self.num_filters,
