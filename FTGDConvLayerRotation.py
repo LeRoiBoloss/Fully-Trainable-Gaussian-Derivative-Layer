@@ -120,7 +120,7 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             for i in range(1, self.num_rota):
                 output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])   
             
-            return output_pooled
+            return rotated_outputs
 
         else:
             GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k in range(self.num_rota)]
@@ -137,7 +137,7 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
             for i in range(1, self.num_rota):
                 output_pooled = tensorflow.math.maximum(output_pooled, rotated_outputs[i])                
             
-            return output_pooled
+            return rotated_outputs
 
     def deploy(self):
 
