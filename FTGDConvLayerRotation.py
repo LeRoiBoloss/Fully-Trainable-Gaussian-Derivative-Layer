@@ -145,9 +145,9 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
 
         else:
             if self.separated:
-                rolled_clWeights = [[tensorflow.roll(self.clWeights[0], -i*self.inputChannels//self.num_rota, 1), self.clWeights[1]] for i in range(self.num_rota)]
+                rolled_clWeights = [[tensorflow.roll(self.clWeights[0], i*self.inputChannels//self.num_rota, 1), self.clWeights[1]] for i in range(self.num_rota)]
             else:
-                rolled_clWeights = [tensorflow.roll(self.clWeights, -i*self.inputChannels//self.num_rota, 1) for i in range(self.num_rota)]
+                rolled_clWeights = [tensorflow.roll(self.clWeights, i*self.inputChannels//self.num_rota, 1) for i in range(self.num_rota)]
 
             GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), w, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k, w in enumerate(rolled_clWeights)]
  
@@ -170,9 +170,9 @@ class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
         the Gaussian Derivative kernels of all bases after the training.
         """
         if self.separated:
-            rolled_clWeights = [[tensorflow.roll(self.clWeights[0], -i*self.inputChannels//self.num_rota, 1), self.clWeights[1]] for i in range(self.num_rota)]
+            rolled_clWeights = [[tensorflow.roll(self.clWeights[0], i*self.inputChannels//self.num_rota, 1), self.clWeights[1]] for i in range(self.num_rota)]
         else:
-            rolled_clWeights = [tensorflow.roll(self.clWeights, -i*self.inputChannels//self.num_rota, 1) for i in range(self.num_rota)]
+            rolled_clWeights = [tensorflow.roll(self.clWeights, i*self.inputChannels//self.num_rota, 1) for i in range(self.num_rota)]
 
         self.GaussFilters = [getGaussianFilters(getBases(self.filter_size, self.num_basis, self.order, self.sigmas, self.centroids, self.thetas+tensorflow.convert_to_tensor(2*math.pi*k/self.num_rota)), w, self.num_basis, self.inputChannels, self.num_filters, self.separated) for k, w in enumerate(rolled_clWeights)] 
         self.deployed = True
