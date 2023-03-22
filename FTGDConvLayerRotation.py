@@ -18,6 +18,30 @@ from tensorflow.python.ops import nn
 import numpy as np
 import math
 
+class MaxGroupPool(tensorflow.keras.layers.Layer):
+    def __init__(self, num_rota, **kwargs):
+        super(MaxGroupPool, self).__init__()
+        self.num_rota = num_rota
+
+    def build(self, input_shape):
+        self.inputShape = input_shape
+
+    def call(self, inputs):
+
+        output = tensorflow.reshape(inputs, [-1, self.inputShape[1], self.inputShape[2], self.num_rota, self.inputShape[3] // self.num_rota])
+        output = tensorflow.reduce_max(output, 3)
+
+        return output
+    
+    def get_config(self):
+        config = super(MaxGroupPool, self).get_config()
+        config.update({
+            "num_rota":self.num_rota,
+        })
+        return config
+
+        
+
 class FTGDConvLayerRotation(tensorflow.keras.layers.Layer):
     """
     Linear combinations of anisotropic, shifted and oriented Gaussian Derivative kernels.
