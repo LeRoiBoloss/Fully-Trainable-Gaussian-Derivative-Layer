@@ -193,7 +193,7 @@ class FTGDConvLayerScaleLifting(tensorflow.keras.layers.Layer):
             return scaled_outputs
 
         else:
-            size_scale_normalized = [(int(self.filter_size*scale), int(self.filter_size*scale)/self.filter_size) for scale in self.scales]
+            size_scale_normalized = [(int(self.filter_size[0]*scale), int(self.filter_size[0]*scale)/self.filter_size[0]) for scale in self.scales]
             
             GaussFilters = [getGaussianFilters(getBases(size, self.num_basis, self.order, self.sigmas*scale, self.centroids*scale, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for size, scale in size_scale_normalized]
  
@@ -215,7 +215,7 @@ class FTGDConvLayerScaleLifting(tensorflow.keras.layers.Layer):
         Function to use when the training is done. It allows to avoid to compute again
         the Gaussian Derivative kernels of all bases after the training.
         """
-        size_scale_normalized = [(int(self.filter_size*scale), int(self.filter_size*scale)/self.filter_size) for scale in self.scales]
+        size_scale_normalized = [(int(self.filter_size[0]*scale), int(self.filter_size[0]*scale)/self.filter_size[0]) for scale in self.scales]
         
         self.GaussFilters = [getGaussianFilters(getBases(size, self.num_basis, self.order, self.sigmas*scale, self.centroids*scale, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for size, scale in size_scale_normalized]
  
