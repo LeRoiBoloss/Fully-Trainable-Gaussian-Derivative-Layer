@@ -196,7 +196,7 @@ class FTGDConvLayerScaleLifting(tensorflow.keras.layers.Layer):
             size_scale_normalized = [(2*int(self.filter_size[0]*scale/2) + 1, (2*int(self.filter_size[0]*scale/2) + 1)/self.filter_size[0]) for scale in self.scales]
             
             GaussFilters = [getGaussianFilters(getBases((size,size), self.num_basis, self.order, self.sigmas*scale, self.centroids*scale, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for size, scale in size_scale_normalized]
- 
+
             if self.separated:
                 scaled_outputs = [computeOutput([ScaledGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for ScaledGaussFilters in GaussFilters]
             else :
@@ -319,8 +319,8 @@ def computeGaussianBasis(size, order, sigmas, centroids, thetas):
             u = tensorflow.math.add(tensorflow.multiply(tensorflow.math.cos(thetas[counter]), x), tensorflow.math.multiply(tensorflow.math.sin(thetas[counter]), y))
             v = tensorflow.math.add(tensorflow.multiply(-tensorflow.math.sin(thetas[counter]), x), tensorflow.math.multiply(tensorflow.math.cos(thetas[counter]), y))
         
-            dGaussx = computeGaussianDerivative(j, tensorflow.math.add(u, - centroids[counter, 0]), sigmas[counter, 0]) * tensorflow.math.pow(sigmas[counter, 0], j)
-            dGaussy = computeGaussianDerivative(i-j, tensorflow.math.add(v, - centroids[counter, 1]), sigmas[counter, 1]) * tensorflow.math.pow(sigmas[counter, 1], i-j)
+            dGaussx = computeGaussianDerivative(j, tensorflow.math.add(u, - centroids[counter, 0]), sigmas[counter, 0]) * tensorflow.math.pow(sigmas[counter, 0], j+1)
+            dGaussy = computeGaussianDerivative(i-j, tensorflow.math.add(v, - centroids[counter, 1]), sigmas[counter, 1]) * tensorflow.math.pow(sigmas[counter, 1], i-j+1)
             
             dGauss = tensorflow.math.multiply(dGaussx, dGaussy)
             kernels.append(tensorflow.expand_dims(dGauss, -1))
