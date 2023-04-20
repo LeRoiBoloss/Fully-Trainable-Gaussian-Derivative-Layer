@@ -195,7 +195,7 @@ class FTGDConvLayerScaleLifting(tensorflow.keras.layers.Layer):
         else:
             size_scale_normalized = [(int(self.filter_size[0]*scale), tensorflow.convert_to_tensor(int(self.filter_size[0]*scale)/self.filter_size[0])) for scale in self.scales]
             
-            GaussFilters = [getGaussianFilters(getBases(size, self.num_basis, self.order, self.sigmas*scale, self.centroids*scale, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for size, scale in size_scale_normalized]
+            GaussFilters = [getGaussianFilters(getBases((size,size), self.num_basis, self.order, self.sigmas*scale, self.centroids*scale, self.thetas), self.clWeights, self.num_basis, self.inputChannels, self.num_filters, self.separated) for size, scale in size_scale_normalized]
  
             if self.separated:
                 scaled_outputs = [computeOutput([ScaledGaussFilters, self.clWeights[1]], inputs, self.num_basis, self.separated, self.padding_mode, self.stride) for ScaledGaussFilters in GaussFilters]
