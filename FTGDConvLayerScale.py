@@ -319,8 +319,8 @@ def computeGaussianBasis(size, order, sigmas, centroids, thetas):
             u = tensorflow.math.add(tensorflow.multiply(tensorflow.math.cos(thetas[counter]), x), tensorflow.math.multiply(tensorflow.math.sin(thetas[counter]), y))
             v = tensorflow.math.add(tensorflow.multiply(-tensorflow.math.sin(thetas[counter]), x), tensorflow.math.multiply(tensorflow.math.cos(thetas[counter]), y))
         
-            dGaussx = computeGaussianDerivative(j, tensorflow.math.add(u, - centroids[counter, 0]), sigmas[counter, 0])
-            dGaussy = computeGaussianDerivative(i-j, tensorflow.math.add(v, - centroids[counter, 1]), sigmas[counter, 1])
+            dGaussx = computeGaussianDerivative(j, tensorflow.math.add(u, - centroids[counter, 0]), sigmas[counter, 0]) * tensorflow.math.pow(sigmas[counter, 0], j)
+            dGaussy = computeGaussianDerivative(i-j, tensorflow.math.add(v, - centroids[counter, 1]), sigmas[counter, 1]) * tensorflow.math.pow(sigmas[counter, 1], i-j)
             
             dGauss = tensorflow.math.multiply(dGaussx, dGaussy)
             kernels.append(tensorflow.expand_dims(dGauss, -1))
